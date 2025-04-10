@@ -1,6 +1,6 @@
 from flask import Flask
 from models import db
-from routes import create_chat_bp  # Import the Blueprint
+from routes import create_chat_bp, bot_bp  # Import the Blueprint
 from config import Config
 from flask_cors import CORS
 from sentence_transformers import SentenceTransformer
@@ -11,39 +11,32 @@ from models import FaissIndexStore
 # Initialize Flask app and database
 app = Flask(__name__)
 app.config.from_object(Config)
-CORS(app)  # Enable CORS for all routes
+CORS(app)
 db.init_app(app)
 
 # Initialize the SentenceTransformer model and FAISS index
-try:
-    print("Loading SentenceTransformer model...")
-    app.model = SentenceTransformer('all-mpnet-base-v2') # all-MiniLM-L6-v2 might have to change the model here, since search isn't working too well
-    print("Model loaded successfully.")
-except Exception as e:
-    print(f"Failed to load model: {e}")
-    app.model = None
+print("Loading SentenceTransformer model...")
+app.model = SentenceTransformer('all-mpnet-base-v2')
+print("Model loaded successfully.")
 
-try:
-    print("Loading FAISS index...")
-    with app.app_context():
-        db.create_all()  # Creates tables based on models
-        index_data = FaissIndexStore.query.first()
-        if index_data:
-            # Convert the bytes object to a NumPy array of type uint8
-            index_array = np.frombuffer(index_data.faiss_index, dtype=np.uint8)
+print("Loading FAISS index...")
+with app.app_context():
+    db.create_all()
+    index_data = FaissIndexStore.query.first()
+    if index_data:
+        # Convert the bytes object to a NumPy array of type uint8
+        index_array = np.frombuffer(index_data.faiss_index, dtype=np.uint8)
 
-            # Deserialize the FAISS index
-            app.index = faiss.deserialize_index(index_array)
-            print("FAISS index loaded successfully.")
-        else:
-            print("No FAISS index found in the database.")
-            app.index = None
-except Exception as e:
-    print(f"Failed to load FAISS index: {e}")
-    app.index = None
+        # Deserialize the FAISS index
+        app.index = faiss.deserialize_index(index_array)
+        print("FAISS index loaded successfully.")
+    else:
+        print("No FAISS index found in the database.")
+        app.index = None
 
 # Register the Blueprint for the create_chat route
 app.register_blueprint(create_chat_bp)
+app.register_blueprint(bot_bp)
 
 if __name__ == '__main__':
     app.run(debug=True)
