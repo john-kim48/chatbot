@@ -10,7 +10,7 @@ from models import FaissIndexStore
 
 # Initialize Flask app and database
 app = Flask(__name__)
-app.config.from_object(Config)
+app.config.from_object(Config) # need to change this to reflect environment in ms azure
 CORS(app)
 db.init_app(app)
 
