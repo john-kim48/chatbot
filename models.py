@@ -7,6 +7,7 @@ class Documents(db.Model):
     __tablename__ = 'documents'
     document_name = db.Column(db.String, primary_key=True)
     document_content = db.Column(db.Text, nullable=False)
+    original_document_name = db.Column(db.String, nullable=True)
 
 class FaissIndexStore(db.Model):
     __tablename__ = 'faiss_index_store'

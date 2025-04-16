@@ -1,7 +1,5 @@
 import openai
 
-openai.api_key = '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'
-
 def chat_search(query, relevant_docs):
     chat_history = [
         {
