@@ -122,14 +122,6 @@ def load_documents_from_folder(folder_path):
 dataset_folder = "/Users/johnkim/Desktop/bylaws_txt"
 documents, document_names = load_documents_from_folder(dataset_folder)
 
-# model = SentenceTransformer('all-mpnet-base-v2') # all-MiniLM-L6-v2, all-mpnet-base-v2
-# def get_embedding(text):
-#     # Fetch the embedding for a given text using SentenceTransformer.
-#     return model.encode(text)
-
-# document_embeddings = np.array([get_embedding(doc) for doc in documents], dtype=np.float32)
-
-
 ##########################################################################################################################################
 ##########################################################################################################################################
 
@@ -193,19 +185,6 @@ n = 0
 # Store embeddings in PostgreSQL
 with app.app_context():
     db.create_all()
-
-    # for name, content in zip(document_names, documents):
-    #     # Check if a document with the same name already exists.
-    #     existing_doc = Documents.query.get(name)
-    #     if not existing_doc:
-    #         document = Documents(
-    #             document_name=name,
-    #             document_content=content,
-    #         )
-    #         db.session.add(document)
-    #         n+=1
-    #     else:
-    #         n += 1
 
     for name, content in zip(chunk_doc_names, all_chunks):
         # Check if a document with the same name already exists.

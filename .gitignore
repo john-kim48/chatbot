@@ -1,6 +1,1 @@
 venv/
-
-.python_packages
-__pycache__
-
-.env
