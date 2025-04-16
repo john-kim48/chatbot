@@ -13,30 +13,29 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out repo
+        uses: actions/checkout@v4
 
-      - name: Set up Python version
+      - name: Set up Python 3.9
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
-      - name: Create and start virtual environment, install dependencies
+      - name: Create venv & install dependencies
         run: |
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
-        working-directory: chatbot
 
       - name: Zip artifact for deployment
-        run: zip release.zip ./* -r
-        working-directory: chatbot
+        run: zip -r release.zip ./*
 
-      - name: Upload artifact for deployment jobs
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: chatbot/release.zip
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -46,17 +45,17 @@ jobs:
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: python-app
 
-      - name: Unzip artifact for deployment
+      - name: Unzip artifact
         run: unzip release.zip
 
-      - name: 'Deploy to Azure Web App'
-        uses: azure/webapps-deploy@v3
+      - name: Deploy to Azure Web App
         id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
         with:
           app-name: 'ChatbotApp'
           slot-name: 'Production'
