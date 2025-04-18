@@ -1,7 +1,6 @@
 from flask import request, jsonify, Blueprint, current_app
-from models import Documents
+from models import Documents, Session, Message, db
 from openai_utils import chat_search, filter_keywords
-import re
 from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, TurnContext
 from botbuilder.schema import Activity
 from config import Config

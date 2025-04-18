@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import ARRAY, PickleType
+from sqlalchemy import PickleType
+import datetime
 
 db = SQLAlchemy()
 
@@ -13,3 +14,19 @@ class FaissIndexStore(db.Model):
     __tablename__ = 'faiss_index_store'
     id = db.Column(db.Integer, primary_key=True)
     faiss_index = db.Column(PickleType, nullable=False)
+
+# session stuff:
+class Session(db.Model):
+    __tablename__ = 'sessions'
+    session_id = db.Column(db.String, primary_key=True)
+    user_id = db.Column(db.String, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_activity = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String, db.ForeignKey('sessions.session_id', ondelete='CASCADE'))
+    sender = db.Column(db.String, nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)

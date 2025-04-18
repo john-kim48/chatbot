@@ -4,7 +4,7 @@ def chat_search(query, relevant_docs):
     chat_history = [
         {
             "role": "system",
-            "content": ("""
+            "content": """
                 You are a helpful search engine that will answer the user's query about the 
                 city of Iqaluit's Bylaws based on the documents provided. Each document will be sent as an individual message.
                 You will carefully read each document
@@ -14,14 +14,18 @@ def chat_search(query, relevant_docs):
                 just name the relevant bylaw for them
                 If there is no answer found within the files, request the user to ask again 
                 but with more clear or specific language"""
-            )
+            
         }
     ]
 
     for doc, name in relevant_docs:
         chat_history.append({"role": "user", "content": f"Document: {name}\nContent: {doc}"})
-    chat_history.append({"role": "user", "content": f"""Based on the context above, answer the user's query about any relevant bylaws:
-                {query}"""})
+    chat_history.append({
+            "role": "user",
+            "content": f"""Based on the context above, answer the user's query about any relevant bylaws: {query}.
+                Based on the file or files you used to answer the query, please state give them a link or list of links
+                with the file name or names you used appended to the end of the following link:
+                https://iqaluit.ca/content/"""})
     
     response = openai.ChatCompletion.create(
         model="gpt-4o",
