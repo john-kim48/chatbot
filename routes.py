@@ -4,13 +4,15 @@ from openai_utils import chat_search, filter_keywords
 import re
 from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, TurnContext
 from botbuilder.schema import Activity
+from config import Config
 
 # Create a Blueprint for the create_chat route
 bot_bp = Blueprint("bot_bp", __name__)
 
 bot_adapter_settings = BotFrameworkAdapterSettings(
-    app_id="00a700fa-9a41-4de8-b9a8-e2f0ed8d2bad",
-    app_password="kxD8Q~L_yPfiWWimQIvqsHeOBJ2Pq0L5LqgrActE"
+    app_id=Config.CLIENT_ID,
+    app_password=Config.CLIENT_SECRET # might need to change this to AZURE_CLIENT_SECRET
+    # app_password=Config.AZURE_CLIENT_SECRET
 ) # this needs to be renewed every 2 years -.-
 adapter = BotFrameworkAdapter(bot_adapter_settings)
 
@@ -22,7 +24,6 @@ def search(query):
         return []
 
     document_data = Documents.query.all()
-    document_names = [document.document_name for document in document_data]
     document_content = [document.document_content for document in document_data]
     original_doc_name = [document.original_document_name for document in document_data]
 

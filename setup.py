@@ -1,200 +1,253 @@
-import os
-import time
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import urllib3
-from pdf2image import convert_from_path
+from pdf2image import convert_from_bytes
 import pytesseract
 from sentence_transformers import SentenceTransformer
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import sessionmaker
 from models import db, Documents, FaissIndexStore
 import faiss
 import numpy as np
 import nltk
-
-start_time = time.time()
+from config import Config
+from msal import ConfidentialClientApplication
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Base URL
-base_url = "https://www.iqaluit.ca"
-start_url = "https://www.iqaluit.ca/city-hall/city-council/bylaws2"
+TENANT_ID       = Config.AZURE_TENANT_ID
+CLIENT_ID       = Config.CLIENT_ID
+CLIENT_SECRET   = Config.AZURE_CLIENT_SECRET
+SCOPE           = ["https://graph.microsoft.com/.default"]
+SITE_ID         = Config.SHAREPOINT_SITE_ID
+LIBRARY_PDF     = "bylaws_pdf"
+LIBRARY_TXT     = "bylaws_txt"
+CHUNK_SIZE      = 5 * 1024 * 1024  # 5MB chunks
 
-# Folder to save PDFs
-pdf_folder = "/Users/johnkim/Desktop/bylaws_pdfs"
-os.makedirs(pdf_folder, exist_ok=True)
+# Initialize MSAL client
+msal_app = ConfidentialClientApplication(
+    CLIENT_ID,
+    authority=f"https://login.microsoftonline.com/{TENANT_ID}",
+    client_credential=CLIENT_SECRET
+)
 
-all_pdf_links = set()
-next_page_url = start_url  # Start with the first page
 
-# Loop through pages until no "Next" button is found
-while next_page_url:
-    response = requests.get(next_page_url)
+def get_access_token():
+    token = msal_app.acquire_token_for_client(scopes=SCOPE)
+    if "access_token" not in token:
+        raise RuntimeError(f"Token error: {token.get('error_description')}")
+    return token["access_token"]
 
-    # Parse the page
-    soup = BeautifulSoup(response.text, "html.parser")
 
-    for link in soup.find_all("a", href=True):
-        pdf_href = link["href"].strip()  # Remove extra spaces
-        if pdf_href.endswith(".pdf"):
-            pdf_url = urljoin(base_url, pdf_href)
-            all_pdf_links.add(pdf_url)
+def graph_headers():
+    return {"Authorization": f"Bearer {get_access_token()}"}
 
-    # Find the "Next" button
-    next_button = soup.find("li", class_="next")
-    if next_button and next_button.find("a"):
-        next_page_url = urljoin(base_url, next_button.find("a")["href"])
+
+def get_drive_id(name):
+    url = f"https://graph.microsoft.com/v1.0/sites/{SITE_ID}/drives"
+    resp = requests.get(url, headers=graph_headers())
+    resp.raise_for_status()
+    for d in resp.json().get("value", []):
+        if d.get("name") == name:
+            return d["id"]
+    raise ValueError(f"Drive {name} not found")
+
+
+def file_exists(drive_id, filename):
+    url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root/children"
+    resp = requests.get(url, headers=graph_headers())
+    resp.raise_for_status()
+    return any(item["name"].lower() == filename.lower() for item in resp.json().get("value", []))
+
+
+def create_upload_session(drive_id, target_path):
+    url = (
+        f"https://graph.microsoft.com/v1.0/drives/{drive_id}"
+        f"/root:/{requests.utils.quote(target_path, safe='')}:/createUploadSession"
+    )
+    body = {"item": {"@microsoft.graph.conflictBehavior": "replace", "name": target_path.split('/')[-1]}}
+    resp = requests.post(url, headers={**graph_headers(), "Content-Type": "application/json"}, json=body)
+    resp.raise_for_status()
+    return resp.json()["uploadUrl"]
+
+
+def upload_bytes(drive_id, target_path, data_bytes):
+    if file_exists(drive_id, target_path):
+        print(f"Skipping existing file: {target_path}")
+        return
+
+    size = len(data_bytes)
+    if size <= 4 * 1024 * 1024:
+        # simple PUT
+        url = (
+            f"https://graph.microsoft.com/v1.0/drives/{drive_id}"  
+            f"/root:/{requests.utils.quote(target_path, safe='')}:/content"
+        )
+        resp = requests.put(url, headers=graph_headers(), data=data_bytes)
+        resp.raise_for_status()
     else:
-        next_page_url = None
-
-# Download all PDFs
-for pdf_url in all_pdf_links:
-    pdf_name = os.path.join(pdf_folder, pdf_url.split("/")[-1])
-
-    # Check if the PDF already exists
-    if os.path.exists(pdf_name):
-        continue
-
-    try:
-        pdf_response = requests.get(pdf_url, verify=False)
-        if pdf_response.status_code == 200:
-            with open(pdf_name, "wb") as pdf_file:
-                pdf_file.write(pdf_response.content)
-            print(f"Saved: {pdf_name}")
-        else:
-            print(f"Skipping (HTTP {pdf_response.status_code}): {pdf_url}")
-    except Exception as e:
-        print(f"Error downloading {pdf_url}: {e}")
-
-def extract_text_from_pdfs(input_folder, output_folder):
-    # Ensure the output folder exists
-    os.makedirs(output_folder, exist_ok=True)
-    
-    # Iterate over all PDF files in the input folder
-    for filename in os.listdir(input_folder):
-        if filename.endswith(".pdf"):
-            file_path = os.path.join(input_folder, filename)
-            output_file_path = os.path.join(output_folder, f"{os.path.splitext(filename)[0]}.txt")
-            
-            # Check if the .txt file already exists
-            if os.path.exists(output_file_path):
-                continue
-            
-            try:
-                print(f"Processing {filename}...")
-                # Convert PDF pages to images
-                images = convert_from_path(file_path)
-                
-                # Extract text from each image
-                text = ""
-                for image in images:
-                    text += pytesseract.image_to_string(image)
-                
-                # Save the extracted text to a .txt file
-                with open(output_file_path, "w", encoding="utf-8") as txt_file:
-                    txt_file.write(text)
-                print(f"Extracted text from {filename} to {output_file_path}")
-            except Exception as e:
-                print(f"Failed to process {filename}: {e}")
-
-# Specify the input folder containing PDF files and the output folder for text files
-txt_folder = "/Users/johnkim/Desktop/bylaws_txt"
-
-# Extract text from PDFs and save as .txt files
-extract_text_from_pdfs(pdf_folder, txt_folder)
+        upload_url = create_upload_session(drive_id, target_path)
+        for start in range(0, size, CHUNK_SIZE):
+            end = min(start + CHUNK_SIZE, size) - 1
+            chunk = data_bytes[start:end+1]
+            headers = {
+                "Content-Range": f"bytes {start}-{end}/{size}",
+                "Content-Length": str(len(chunk))
+            }
+            r = requests.put(upload_url, headers=headers, data=chunk)
+            if r.status_code not in (200, 201, 202):
+                raise RuntimeError(f"Chunk upload failed: {r.text}")
 
 
-def load_documents_from_folder(folder_path):
+def extract_text(pdf_bytes):
+    pages = convert_from_bytes(pdf_bytes)
+    return "".join(pytesseract.image_to_string(page) for page in pages)
+
+
+def run_pipeline():
+    # Resolve drive IDs
+    pdf_drive = get_drive_id(LIBRARY_PDF)
+    txt_drive = get_drive_id(LIBRARY_TXT)
+
+    # Scraping setup
+    base = "https://www.iqaluit.ca"
+    next_page = "https://www.iqaluit.ca/city-hall/city-council/bylaws2"
+    pdf_links = set()
+
+    # Collect PDF links
+    while next_page:
+        resp = requests.get(next_page, verify=False)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        for a in soup.select("a[href$='.pdf']"):
+            pdf_links.add(urljoin(base, a['href']))
+        nxt = soup.select_one("li.next a[href]")
+        next_page = urljoin(base, nxt['href']) if nxt else None
+
+    # Process each PDF
+    for url in pdf_links:
+        filename = url.split('/')[-1]
+        txt_name = filename.rsplit('.', 1)[0] + '.txt'
+
+        # Check for both PDF and TXT
+        if file_exists(pdf_drive, filename) and file_exists(txt_drive, txt_name):
+            print(f"Skipping {filename} (already uploaded)")
+            continue
+
+        # Download PDF into memory
+        resp = requests.get(url, verify=False)
+        resp.raise_for_status()
+        pdf_data = resp.content
+
+        # Upload PDF
+        upload_bytes(pdf_drive, filename, pdf_data)
+
+        # Extract and upload text
+        text = extract_text(pdf_data)
+        upload_bytes(txt_drive, txt_name, text.encode('utf-8'))
+
+    print("Pipeline completed successfully.")
+
+if __name__ == '__main__':
+    run_pipeline()
+
+
+def load_documents_from_sharepoint_txt():
+    txt_drive_id = get_drive_id(LIBRARY_TXT)
+    headers = graph_headers()
     documents = []
     document_names = []
-    for filename in os.listdir(folder_path):
-        file_path = os.path.join(folder_path, filename)
-        if filename.endswith(".txt"):  # Process .txt files
-            with open(file_path, "r", encoding="utf-8") as f:
-                documents.append(f.read())
-                document_names.append(filename)
+
+    # List files in the TXT library
+    url = f"https://graph.microsoft.com/v1.0/drives/{txt_drive_id}/root/children"
+    resp = requests.get(url, headers=headers)
+    resp.raise_for_status()
+    items = resp.json().get("value", [])
+
+    for item in items:
+        if item["name"].endswith(".txt"):
+            download_url = f"https://graph.microsoft.com/v1.0/drives/{txt_drive_id}/items/{item['id']}/content"
+            file_resp = requests.get(download_url, headers=headers)
+            file_resp.raise_for_status()
+            documents.append(file_resp.text)
+            document_names.append(item["name"])
+
     return documents, document_names
 
-# Specify the folder containing your text files
-dataset_folder = "/Users/johnkim/Desktop/bylaws_txt"
-documents, document_names = load_documents_from_folder(dataset_folder)
 
-##########################################################################################################################################
-##########################################################################################################################################
+documents, document_names = load_documents_from_sharepoint_txt()
+
 
 nltk.download('punkt')
 nltk.download('punkt_tab')
 
 model = SentenceTransformer('all-mpnet-base-v2')
-print("downloaded nltk and model")#
+print("downloaded nltk and model")
+
 
 def chunk_text(text, max_tokens):
-    sentences = nltk.sent_tokenize(text)  # Split into sentences
+    sentences = nltk.sent_tokenize(text)
     chunks = []
     current_chunk = []
     current_length = 0
 
     for sentence in sentences:
-        token_count = len(sentence.split())  # Approximate token count
+        token_count = len(sentence.split())
         if current_length + token_count > max_tokens:
-            chunks.append(" ".join(current_chunk))  # Store completed chunk
-            current_chunk = [sentence]  # Start new chunk
+            chunks.append(" ".join(current_chunk))
+            current_chunk = [sentence]
             current_length = token_count
         else:
             current_chunk.append(sentence)
             current_length += token_count
 
     if current_chunk:
-        chunks.append(" ".join(current_chunk))  # Add last chunk
+        chunks.append(" ".join(current_chunk))
 
     return chunks
+
 
 def get_embeddings(documents, document_names, max_tokens):
     all_chunks = []
     chunk_doc_names = []
+    real_doc_names = []
     for doc, doc_name in zip(documents, document_names):
         chunks = chunk_text(doc, max_tokens)
-        all_chunks.extend(chunks)  # Store all chunks in a list
+        all_chunks.extend(chunks)
         for i in range(len(chunks)):
             chunk_doc_names.append(f"{doc_name}_{i}")
-        # chunk_doc_names.extend([doc_name] * len(chunks))  # Add doc_name for each chunk
-
+        real_doc_names.extend([doc_name] * len(chunks))
+        
     # Embed all chunks
     embeddings = np.array([model.encode(chunk) for chunk in all_chunks], dtype=np.float32)
-    return chunk_doc_names, all_chunks, embeddings  # Return both chunks and their embeddings
+    return chunk_doc_names, all_chunks, real_doc_names, embeddings
 
-chunk_doc_names, all_chunks, document_embeddings = get_embeddings(documents, document_names, 256)
 
-##########################################################################################################################################
-##########################################################################################################################################
+chunk_doc_names, all_chunks, real_doc_names, document_embeddings = get_embeddings(documents, document_names, 256)
+
 
 # Store embeddings in FAISS index
 index = faiss.IndexFlatL2(document_embeddings.shape[1])
 index.add(document_embeddings)
 serialized_index = faiss.serialize_index(index)
 
+
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:Rycbar0408$@localhost/embeddings'
+app.config.from_object(Config)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
-n = 0
 # Store embeddings in PostgreSQL
 with app.app_context():
     db.create_all()
-
-    for name, content in zip(chunk_doc_names, all_chunks):
-        # Check if a document with the same name already exists.
+    for name, content, real_names in zip(chunk_doc_names, all_chunks, real_doc_names):
         existing_doc = Documents.query.get(name)
         document = Documents(
                 document_name=name,
                 document_content=content,
+                original_document_name = real_names
             )
         db.session.add(document)
-        n+=1
 
     faiss_index_store = FaissIndexStore.query.first()
     if faiss_index_store:
@@ -203,11 +256,5 @@ with app.app_context():
     else:
         faiss_index_store = FaissIndexStore(faiss_index=serialized_index)
         db.session.add(faiss_index_store)
-    
+
     db.session.commit()
-
-
-end_time = time.time()
-elapsed_time = end_time - start_time
-
-print(f"Setup complete!: {n} documents in database. Time elapsed: {elapsed_time:.4f} seconds")
