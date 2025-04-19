@@ -52,4 +52,3 @@ jobs:
           app-name: 'ChatbotApp'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8B286736C7084435A49832E340A38988 }}
-          package: 'release.zip'
