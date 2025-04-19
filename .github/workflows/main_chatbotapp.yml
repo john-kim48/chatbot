@@ -21,11 +21,11 @@ jobs:
           cd ${{ github.workspace }}
           zip -r release.zip . -x "*.git*" "*__pycache__*" "*.pyc" "tests/*" "release.zip"
       
-            - name: Upload artifact
-              uses: actions/upload-artifact@v4
-              with:
-                name: python-app
-                path: release.zip
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-app
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
