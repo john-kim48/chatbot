@@ -33,4 +33,4 @@ with app.app_context():
 app.register_blueprint(bot_bp)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=8000)
