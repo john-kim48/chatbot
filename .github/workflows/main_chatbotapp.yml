@@ -17,7 +17,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Zip artifact for deployment
-        run: zip -r release.zip .
+        run: |
+          # Exclude VCS, caches, tests, and the ZIP itself
+          zip -r release.zip . \
+            -x ".git/*" \
+               "__pycache__/*" \
+               "*.pyc" \
+               "tests/*" \
+               "release.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -38,9 +45,6 @@ jobs:
         with:
           name: python-app
 
-      - name: Unzip artifact
-        run: unzip release.zip
-
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
@@ -48,3 +52,4 @@ jobs:
           app-name: 'ChatbotApp'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8B286736C7084435A49832E340A38988 }}
+          package: 'release.zip'
