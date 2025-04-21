@@ -4,13 +4,15 @@ from openai_utils import chat_search, filter_keywords
 from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, TurnContext
 from botbuilder.schema import Activity
 from config import Config
+import runpy
 
 # Create a Blueprint for the create_chat route
 bot_bp = Blueprint("bot_bp", __name__)
+setup_db = Blueprint("setup_db", __name__)
 
 bot_adapter_settings = BotFrameworkAdapterSettings(
     app_id=Config.CLIENT_ID,
-    app_password=Config.CLIENT_SECRET # might need to change this to AZURE_CLIENT_SECRET
+    app_password=Config.CLIENT_SECRET # might need to change this to AZURE_CLIENT_SECRET (why?)
     # app_password=Config.AZURE_CLIENT_SECRET
 ) # this needs to be renewed every 2 years -.-
 adapter = BotFrameworkAdapter(bot_adapter_settings)
@@ -81,3 +83,16 @@ def messages():
         return jsonify({"status": "ok"})
     else:
         return jsonify({"status": "Unsupported content type"}), 400
+    
+
+@setup_db.route("/trigger-database-setup", methods=["POST"])
+def trigger_database_setup():
+    secret = request.headers.get("X-Setup-Secret")
+    if secret != Config.SETUP_SECRET:
+        return jsonify({"error": "Unauthorized"}), 403
+    try:
+        runpy.run_path("reset.py")
+        runpy.run_path("setup_database.py")
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

@@ -1,6 +1,6 @@
 from flask import Flask
 from models import db
-from routes import bot_bp
+from routes import bot_bp, setup_db
 from config import Config
 from flask_cors import CORS
 from sentence_transformers import SentenceTransformer
@@ -31,6 +31,7 @@ with app.app_context():
 
 # Register the Blueprint for the create_chat route
 app.register_blueprint(bot_bp)
+app.register_blueprint(setup_db)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
