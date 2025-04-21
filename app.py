@@ -10,13 +10,12 @@ from models import FaissIndexStore
 
 # Initialize Flask app and database
 app = Flask(__name__)
-app.config.from_object(Config) # need to change this to reflect environment in ms azure
+app.config.from_object(Config)
 CORS(app)
 db.init_app(app)
 
 # Initialize the SentenceTransformer model and FAISS index
-app.model = SentenceTransformer('all-mpnet-base-v2')
-print("Model loaded successfully.")
+# app.model = SentenceTransformer('all-mpnet-base-v2')
 
 with app.app_context():
     db.create_all()

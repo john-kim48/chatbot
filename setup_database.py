@@ -12,6 +12,7 @@ import numpy as np
 import nltk
 from config import Config
 from msal import ConfidentialClientApplication
+import openai
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -231,7 +232,18 @@ def get_embeddings(documents, document_names, max_tokens):
         real_doc_names.extend([doc_name] * len(chunks))
         
     # Embed all chunks
-    embeddings = np.array([model.encode(chunk) for chunk in all_chunks], dtype=np.float32)
+    embeddings = []
+    batch_size = 32
+    for i in range(0, len(all_chunks), batch_size):
+        batch = all_chunks[i:i+batch_size]
+        response = openai.Embedding.create(
+            input=batch,
+            model=model
+        )
+        batch_embeddings = [item.embedding for item in response.data]
+        embeddings.extend(batch_embeddings)
+
+    embeddings = np.array(embeddings, dtype=np.float32)
     return chunk_doc_names, all_chunks, real_doc_names, embeddings
 
 

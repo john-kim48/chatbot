@@ -5,10 +5,13 @@ from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, Tu
 from botbuilder.schema import Activity
 from config import Config
 import runpy
+import openai
+import numpy as np
 
 # Create a Blueprint for the create_chat route
 bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
+
 
 bot_adapter_settings = BotFrameworkAdapterSettings(
     app_id=Config.CLIENT_ID,
@@ -16,6 +19,7 @@ bot_adapter_settings = BotFrameworkAdapterSettings(
     # app_password=Config.AZURE_CLIENT_SECRET
 ) # this needs to be renewed every 2 years -.-
 adapter = BotFrameworkAdapter(bot_adapter_settings)
+
 
 def search(query):
     """
@@ -31,12 +35,12 @@ def search(query):
     # Filter keywords out of the query
     filtered_query = filter_keywords(query)
 
-    # Encode the query and search the FAISS index
-    query_embedding = current_app.model.encode(filtered_query).reshape(1, -1)
-
-    # if i have time:
-    # encode each word in the query and then search based on each word
-    # filter each word individually and then use all indices.
+    # if i have time: encode each word in the query and then search based on each word filter each word individually and then use all indices.
+    response = openai.Embedding.create(
+    input=filtered_query,
+    model="text-embedding-3-small"
+    )
+    query_embedding = np.array(response.data[0].embedding, dtype=np.float32).reshape(1, -1)
 
     distances, indices = current_app.index.search(query_embedding, 50)
 
@@ -62,6 +66,7 @@ def search(query):
 
     return [(doc, name) for doc, name in zip(output_document_data, output_document_names)]
 
+
 async def on_message_activity(turn_context: TurnContext):
     # Extract the user's message
     query = turn_context.activity.text.strip() if turn_context.activity.text else ""
@@ -70,6 +75,7 @@ async def on_message_activity(turn_context: TurnContext):
     response_text = chat_search(query, context)
     # Send back the generated response
     await turn_context.send_activity(response_text)
+
 
 @bot_bp.route("/api/messages", methods=["POST"])
 def messages():
