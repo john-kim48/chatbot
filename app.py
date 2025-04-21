@@ -34,4 +34,5 @@ app.register_blueprint(bot_bp)
 app.register_blueprint(setup_db)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
+    port = int(Config.PORT)
+    app.run(host='0.0.0.0', port=port)

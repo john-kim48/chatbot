@@ -11,3 +11,4 @@ class Config:
     AZURE_CLIENT_SECRET = os.getenv('AZURE_CLIENT_SECRET')
     SHAREPOINT_SITE_ID = os.getenv('SHAREPOINT_SITE_ID')
     SETUP_SECRET = os.getenv('SETUP_SECRET')
+    PORT = os.getenv('PORT')
