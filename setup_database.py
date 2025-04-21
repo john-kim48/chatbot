@@ -4,7 +4,6 @@ from urllib.parse import urljoin
 import urllib3
 from pdf2image import convert_from_bytes
 import pytesseract
-from sentence_transformers import SentenceTransformer
 from flask import Flask
 from models import db, Documents, FaissIndexStore
 import faiss
@@ -194,7 +193,7 @@ documents, document_names = load_documents_from_sharepoint_txt()
 nltk.download('punkt')
 nltk.download('punkt_tab')
 
-model = SentenceTransformer('all-mpnet-base-v2')
+model = "text-embedding-3-small"
 print("downloaded nltk and model")
 
 

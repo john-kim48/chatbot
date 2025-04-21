@@ -10,7 +10,6 @@ pytesseract==0.3.13
 Flask==2.2.5
 Flask-SQLAlchemy==3.0.5
 SQLAlchemy==1.4.41
-sentence-transformers==2.2.2
 pgvector==0.2.3
 psycopg2-binary==2.9.9
 huggingface_hub==0.8.1

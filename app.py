@@ -3,7 +3,6 @@ from models import db
 from routes import bot_bp, setup_db
 from config import Config
 from flask_cors import CORS
-from sentence_transformers import SentenceTransformer
 import numpy as np
 import faiss
 from models import FaissIndexStore
@@ -14,8 +13,6 @@ app.config.from_object(Config)
 CORS(app)
 db.init_app(app)
 
-# Initialize the SentenceTransformer model and FAISS index
-# app.model = SentenceTransformer('all-mpnet-base-v2')
 
 with app.app_context():
     db.create_all()
