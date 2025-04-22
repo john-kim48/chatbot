@@ -12,3 +12,4 @@ class Config:
     SHAREPOINT_SITE_ID = os.getenv('SHAREPOINT_SITE_ID')
     SETUP_SECRET = os.getenv('SETUP_SECRET')
     PORT = os.getenv('PORT')
+    MS_APP_ID = os.getenv('MS_APP_ID')
