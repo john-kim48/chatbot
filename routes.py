@@ -14,15 +14,11 @@ bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
 
 
-try:
-    bot_adapter_settings = BotFrameworkAdapterSettings(
-        app_id=Config.MS_APP_ID,
-        app_password=Config.MS_APP_PASSWORD # this needs to be renewed every 2 years -.-
-    )
-    adapter = BotFrameworkAdapter(bot_adapter_settings)
-except Exception as e:
-    print("Failed to initialize bot adapter:", e)
-
+bot_adapter_settings = BotFrameworkAdapterSettings(
+    app_id=Config.MS_APP_ID,
+    app_password=Config.MS_APP_PASSWORD # this needs to be renewed every 2 years -.-
+)
+adapter = BotFrameworkAdapter(bot_adapter_settings)
 
 openai_api_key = Config.OPENAI_API_KEY
 
