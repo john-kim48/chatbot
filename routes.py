@@ -7,6 +7,7 @@ from config import Config
 import runpy
 import openai
 import numpy as np
+import asyncio
 
 # Create a Blueprint for the create_chat route
 bot_bp = Blueprint("bot_bp", __name__)
@@ -25,8 +26,6 @@ def search(query):
     """
     Search for documents using the FAISS index and the pre-initialized model.
     """
-    if not current_app.model or not current_app.index:
-        return []
 
     document_data = Documents.query.all()
     document_content = [document.document_content for document in document_data]

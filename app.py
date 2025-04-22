@@ -13,7 +13,6 @@ app.config.from_object(Config)
 CORS(app)
 db.init_app(app)
 
-
 with app.app_context():
     db.create_all()
     index_data = FaissIndexStore.query.first()
