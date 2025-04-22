@@ -160,6 +160,7 @@ def run_pipeline():
 
     print("Pipeline completed successfully.")
 
+
 if __name__ == '__main__':
     run_pipeline()
 
