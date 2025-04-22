@@ -14,12 +14,14 @@ bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
 
 
-bot_adapter_settings = BotFrameworkAdapterSettings(
-    app_id=Config.MS_APP_ID,
-    app_password=Config.CLIENT_SECRET # this needs to be renewed every 2 years -.-
- )
-
-adapter = BotFrameworkAdapter(bot_adapter_settings)
+try:
+    bot_adapter_settings = BotFrameworkAdapterSettings(
+        app_id=Config.MS_APP_ID,
+        app_password=Config.MS_APP_PASSWORD # this needs to be renewed every 2 years -.-
+    )
+    adapter = BotFrameworkAdapter(bot_adapter_settings)
+except Exception as e:
+    print("Failed to initialize bot adapter:", e)
 
 
 openai_api_key = Config.OPENAI_API_KEY
@@ -27,7 +29,7 @@ openai_api_key = Config.OPENAI_API_KEY
 
 def search(query):
     try:
-        print("Running FAISS search...")
+        print("Running search...")
         if not current_app.index:
             print("No FAISS index found in app context.")
             return []

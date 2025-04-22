@@ -13,3 +13,4 @@ class Config:
     SETUP_SECRET = os.getenv('SETUP_SECRET')
     PORT = os.getenv('PORT')
     MS_APP_ID = os.getenv('MS_APP_ID')
+    MS_APP_PASSWORD = os.getenv('MS_APP_PASSWORD')
