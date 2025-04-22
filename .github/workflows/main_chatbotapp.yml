@@ -16,11 +16,14 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v4
 
+      - name: Make start.sh executable
+        run: chmod +x start.sh
+
       - name: Zip artifact for deployment
         run: |
           cd ${{ github.workspace }}
           zip -r release.zip . -x "*.git*" "*__pycache__*" "*.pyc" "tests/*" "release.zip"
-      
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -45,6 +48,5 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'ChatbotApp'
-          slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_8B286736C7084435A49832E340A38988 }}
           package: 'release.zip'
