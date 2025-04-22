@@ -1,6 +1,6 @@
 from flask import Flask
 from models import db
-from routes import bot_bp, setup_db
+from routes import bot_bp, setup_db, health_route
 from config import Config
 from flask_cors import CORS
 import numpy as np
@@ -27,6 +27,7 @@ with app.app_context():
 # Register the Blueprint for the create_chat route
 app.register_blueprint(bot_bp)
 app.register_blueprint(setup_db)
+app.register_blueprint(health_route)
 
 if __name__ == '__main__':
     port = int(Config.PORT)

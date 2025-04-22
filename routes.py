@@ -12,6 +12,7 @@ import asyncio
 # Create a Blueprint for the create_chat route
 bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
+health_route = Blueprint("health_route", __name__)
 
 
 bot_adapter_settings = BotFrameworkAdapterSettings(
@@ -123,6 +124,10 @@ def trigger_database_setup():
     except Exception as e:
         print(f"[trigger_database_setup] Exception: {e}")
         return jsonify({"error": str(e)}), 500
+    
+@health_route.route("/health")
+def health():
+    return "ok", 200
 
 
 
