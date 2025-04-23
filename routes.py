@@ -1,10 +1,12 @@
 from flask import request, jsonify, Blueprint, current_app
 from models import Documents, Session, Message, db
 from openai_utils import chat_search, filter_keywords
-from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, TurnContext
+# from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, TurnContext
 from botbuilder.schema import Activity
-from botbuilder.core import CloudAdapter, ConfigurationBotFrameworkAuthentication, TurnContext
-from botbuilder.core.integration import ConfigurationBotFrameworkAuthentication
+# from botbuilder.core import CloudAdapter, ConfigurationBotFrameworkAuthentication, TurnContext
+# from botbuilder.core.integration import ConfigurationBotFrameworkAuthentication
+from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
+from botbuilder.core import BotFrameworkAdapterSettings, TurnContext
 from config import Config
 import runpy
 import openai
