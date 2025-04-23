@@ -126,7 +126,7 @@ def messages():
         ###
         auth_header = request.headers.get("Authorization", "")
         activity = Activity().deserialize(request.json)
-        print(f"Failed to process activity: {activity}")
+        print(f"Failed to process activity: {auth_header}")
         ###
         print(f"[messages] Exception: {e}")
         return jsonify({"error": str(e)}), 500
