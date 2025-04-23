@@ -17,7 +17,7 @@ pingpong = Blueprint("pingpong", __name__)
 
 
 bot_adapter_settings = BotFrameworkAdapterSettings(
-    app_id=Config.MS_APP_ID,
+    app_id=Config.CLIENT_ID,
     app_password=Config.MS_APP_PASSWORD # this needs to be renewed every 2 years -.-
 )
 adapter = BotFrameworkAdapter(bot_adapter_settings)
