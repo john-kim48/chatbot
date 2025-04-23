@@ -1,12 +1,11 @@
 from flask import Flask
 from models import db
-from routes import bot_bp, setup_db, health_route
+from routes import bot_bp, setup_db, health_route, pingpong
 from config import Config
 from flask_cors import CORS
 import numpy as np
 import faiss
 from models import FaissIndexStore
-import time
 
 # Initialize Flask app and database
 app = Flask(__name__)
@@ -21,11 +20,9 @@ with app.app_context():
     db.create_all()
     index_data = FaissIndexStore.query.first()
     if index_data:
-        start = time.time()
         index_array = np.frombuffer(index_data.faiss_index, dtype=np.uint8)
         app.index = faiss.deserialize_index(index_array)
-        end = time.time()
-        print(f"FAISS index loaded in {end - start:.2f} seconds.")
+        print(f"FAISS index loaded")
     else:
         print("No FAISS index found in the database.")
         app.index = None
@@ -34,6 +31,7 @@ with app.app_context():
 app.register_blueprint(bot_bp)
 app.register_blueprint(setup_db)
 app.register_blueprint(health_route)
+app.register_blueprint(pingpong)
 
 if __name__ == '__main__':
     port = int(Config.PORT)

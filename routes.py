@@ -13,6 +13,7 @@ import asyncio
 bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
 health_route = Blueprint("health_route", __name__)
+pingpong = Blueprint("pingpong", __name__)
 
 
 bot_adapter_settings = BotFrameworkAdapterSettings(
@@ -88,16 +89,19 @@ async def on_message_activity(turn_context: TurnContext):
 def messages():
     try:
         print("Received POST to /api/messages")
+
         if "application/json" not in request.headers.get("Content-Type", ""):
             print("Unsupported content type.")
             return jsonify({"status": "Unsupported content type"}), 400
-
+        
+        auth_header = request.headers.get("Authorization", "")
         activity = Activity().deserialize(request.json)
-        print(f"Deserialized activity: {activity.text if activity.text else 'No text'}")
+
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        task = loop.create_task(adapter.process_activity(activity, "", on_message_activity))
+        task = loop.create_task(adapter.process_activity(activity, auth_header, on_message_activity))
         loop.run_until_complete(task)
+
         print("Processed activity successfully.")
         return jsonify({"status": "ok"})
 
@@ -128,3 +132,8 @@ def trigger_database_setup():
 @health_route.route("/health")
 def health():
     return "ok", 200
+
+@pingpong.route("/ping", methods=["GET"])
+def ping():
+    print("🔔 /ping hit")
+    return "pong", 200
