@@ -13,8 +13,6 @@ import asyncio
 bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
 health_route = Blueprint("health_route", __name__)
-pingpong = Blueprint("pingpong", __name__)
-
 
 bot_adapter_settings = BotFrameworkAdapterSettings(
     app_id=Config.CLIENT_ID,
@@ -132,8 +130,3 @@ def trigger_database_setup():
 @health_route.route("/health")
 def health():
     return "ok", 200
-
-@pingpong.route("/ping", methods=["GET"])
-def ping():
-    print("🔔 /ping hit")
-    return "pong", 200
