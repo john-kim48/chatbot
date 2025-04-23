@@ -6,7 +6,7 @@ from botbuilder.schema import Activity
 # from botbuilder.core import CloudAdapter, ConfigurationBotFrameworkAuthentication, TurnContext
 # from botbuilder.core.integration import ConfigurationBotFrameworkAuthentication
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
-from botbuilder.core import BotFrameworkAdapterSettings, TurnContext
+from botbuilder.core import TurnContext
 from config import Config
 import runpy
 import openai
@@ -18,12 +18,21 @@ bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
 health_route = Blueprint("health_route", __name__)
 
-settings = BotFrameworkAdapterSettings(
-    app_id=Config.MS_APP_ID,
-    app_password=Config.MS_APP_PASSWORD,
-)
-auth = ConfigurationBotFrameworkAuthentication(settings)
-adapter = CloudAdapter(auth)
+# settings = BotFrameworkAdapterSettings(
+#     app_id=Config.MS_APP_ID,
+#     app_password=Config.MS_APP_PASSWORD,
+# )
+# auth = ConfigurationBotFrameworkAuthentication(settings)
+# adapter = CloudAdapter(auth)
+
+class BotConfig:
+    MicrosoftAppId       = Config.MS_APP_ID
+    MicrosoftAppPassword = Config.MS_APP_PASSWORD
+    MicrosoftAppType     = "SingleTenant"
+    MicrosoftAppTenantId = Config.AZURE_TENANT_ID
+
+auth    = ConfigurationBotFrameworkAuthentication(BotConfig)
+adapter  = CloudAdapter(auth)
 
 
 openai_api_key = Config.OPENAI_API_KEY
@@ -103,7 +112,7 @@ def messages():
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        task = loop.create_task(adapter.process_activity(activity, auth_header, on_message_activity))
+        task = loop.create_task(adapter.process_activity(auth_header, activity, on_message_activity))
         loop.run_until_complete(task)
 
         print("Processed activity successfully.")
