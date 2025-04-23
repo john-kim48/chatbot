@@ -6,6 +6,7 @@ from botbuilder.schema import Activity
 # from botbuilder.core import CloudAdapter, ConfigurationBotFrameworkAuthentication, TurnContext
 # from botbuilder.core.integration import ConfigurationBotFrameworkAuthentication
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
+from botframework.connector.auth import AuthenticationConfiguration
 from botbuilder.core import TurnContext
 from config import Config
 import runpy
@@ -31,7 +32,10 @@ class BotConfig:
     MicrosoftAppType     = "SingleTenant"
     MicrosoftAppTenantId = Config.AZURE_TENANT_ID
 
-auth    = ConfigurationBotFrameworkAuthentication(BotConfig)
+auth_config = AuthenticationConfiguration()
+auth_config.claims_validator = lambda claims: True
+
+auth    = ConfigurationBotFrameworkAuthentication(BotConfig, auth_configuration=auth_config)
 adapter  = CloudAdapter(auth)
 
 
@@ -119,6 +123,11 @@ def messages():
         return jsonify({"status": "ok"})
 
     except Exception as e:
+        ###
+        auth_header = request.headers.get("Authorization", "")
+        activity = Activity().deserialize(request.json)
+        print(f"Failed to process activity: {activity}")
+        ###
         print(f"[messages] Exception: {e}")
         return jsonify({"error": str(e)}), 500
 
