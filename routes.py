@@ -3,6 +3,8 @@ from models import Documents, Session, Message, db
 from openai_utils import chat_search, filter_keywords
 from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, TurnContext
 from botbuilder.schema import Activity
+from botbuilder.core import CloudAdapter, ConfigurationBotFrameworkAuthentication, TurnContext
+from botbuilder.core.integration import ConfigurationBotFrameworkAuthentication
 from config import Config
 import runpy
 import openai
@@ -14,11 +16,13 @@ bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
 health_route = Blueprint("health_route", __name__)
 
-bot_adapter_settings = BotFrameworkAdapterSettings(
+settings = BotFrameworkAdapterSettings(
     app_id=Config.MS_APP_ID,
-    app_password=Config.MS_APP_PASSWORD # this needs to be renewed every 2 years -.-
+    app_password=Config.MS_APP_PASSWORD,
 )
-adapter = BotFrameworkAdapter(bot_adapter_settings)
+auth = ConfigurationBotFrameworkAuthentication(settings)
+adapter = CloudAdapter(auth)
+
 
 openai_api_key = Config.OPENAI_API_KEY
 
