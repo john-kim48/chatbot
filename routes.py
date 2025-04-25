@@ -45,7 +45,7 @@ def search(query):
    
         query_embedding = np.array(response.data[0].embedding, dtype=np.float32).reshape(1, -1)
 
-        distances, indices = current_app.index.search(query_embedding, 75)
+        distances, indices = current_app.index.search(query_embedding, 200)
         print(f"Search complete. Top match indices: {indices[0]}")
 
         output_document_data = []
