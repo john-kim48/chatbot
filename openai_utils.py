@@ -4,31 +4,22 @@ def chat_search(query, relevant_docs):
     chat_history = [
         {
             "role": "system",
-            "content": """
-                You are a helpful search engine that will answer the user's query about the 
-                city of Iqaluit's Bylaws based on the documents provided. Each document will be sent as an individual message.
-                You will carefully read each document
-                thoroughly and then accurately answer their question with information from
-                the bylaws found. State the file name you found the information from at the end. 
-                They may ask about the existence of a certain bylaw, so if found please
-                just name the relevant bylaw for them
-                If there is no answer found within the files, request the user to ask again 
-                but with more clear or specific language"""
-            
+            "content": f"""
+                You are a helpful search engine that will answer the user's query about the city of Iqaluit's Bylaws 
+                based on the documents provided. Each document will be sent as an individual message. You will carefully 
+                read each document thoroughly and then accurately answer their question with information from the bylaws found. 
+                If there is no answer found within the files, request the user to ask again but with more clear or specific language. 
+                When you answer them, please give a link or list of links by appending the file name or names (without the .txt at the end)
+                you used for the answer to the end of the following link: https://iqaluit.ca/content/
+                The query is: {query}"""
         }
     ]
 
     for doc, name in relevant_docs:
         chat_history.append({"role": "user", "content": f"Document: {name}\nContent: {doc}"})
-    chat_history.append({
-            "role": "user",
-            "content": f"""Based on the context above, answer the user's query about any relevant bylaws: {query}.
-                Based on the file or files you used to answer the query, please state give them a link or list of links
-                with the file name or names you used appended to the end of the following link:
-                https://iqaluit.ca/content/"""})
     
     response = openai.ChatCompletion.create(
-        model="gpt-4o",
+        model="gpt-4.1-mini",
         messages=chat_history
     )
     return response["choices"][0]["message"]["content"]
@@ -39,17 +30,17 @@ def filter_keywords(query):
         {
             "role": "system",
             "content": ("""
-                        Filter out only the keywords from the following query, and give me a list with
-                        all those keywords along with any synonyms of those keywords that one may find
-                        in legal documents. Please give me the list of all the words with only commas separating them
-                        Please ONLY GIVE ME IMPORTANT, RELEVANT KEY WORDS""")
+                        Filter out only the keywords from the following query, and give me a list with all 
+                        those keywords along with any synonyms of those keywords that one may find in legal documents 
+                        pertaining to bylaws or laws. Please give me the list of all the words with only commas separating them. 
+                        Please ONLY GIVE ME IMPORTANT, RELEVANT KEYWORDS""")
         }
     ]
 
     chat_history.append({"role": "user", "content": query})
 
     response = openai.ChatCompletion.create(
-        model="gpt-4o",
+        model="gpt-4.1-mini",
         messages=chat_history
     )
 

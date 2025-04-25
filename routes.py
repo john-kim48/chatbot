@@ -1,12 +1,8 @@
 from flask import request, jsonify, Blueprint, current_app
 from models import Documents, Session, Message, db
 from openai_utils import chat_search, filter_keywords
-# from botbuilder.core import BotFrameworkAdapter, BotFrameworkAdapterSettings, TurnContext
 from botbuilder.schema import Activity
-# from botbuilder.core import CloudAdapter, ConfigurationBotFrameworkAuthentication, TurnContext
-# from botbuilder.core.integration import ConfigurationBotFrameworkAuthentication
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
-from botframework.connector.auth import AuthenticationConfiguration
 from botbuilder.core import TurnContext
 from config import Config, BotConfig
 import runpy
@@ -44,9 +40,9 @@ def search(query):
 
         response = openai.Embedding.create(
             input=filtered_query,
-            model="text-embedding-3-small"
+            model="text-embedding-3-large"
         )
-        print("Got embedding from OpenAI.")
+   
         query_embedding = np.array(response.data[0].embedding, dtype=np.float32).reshape(1, -1)
 
         distances, indices = current_app.index.search(query_embedding, 75)
