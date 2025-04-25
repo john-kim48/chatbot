@@ -14,3 +14,10 @@ class Config:
     PORT = os.getenv('PORT')
     MS_APP_ID = os.getenv('MS_APP_ID')
     MS_APP_PASSWORD = os.getenv('MS_APP_PASSWORD')
+
+class BotConfig:
+    PORT = os.getenv("PORT")
+    APP_ID = os.environ.get("MS_APP_ID")
+    APP_PASSWORD = os.environ.get("MS_APP_PASSWORD")
+    APP_TYPE = os.environ.get("MicrosoftAppType", "SingleTenant")
+    APP_TENANTID = os.environ.get("AZURE_TENANT_ID")

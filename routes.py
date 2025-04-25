@@ -8,7 +8,7 @@ from botbuilder.schema import Activity
 from botbuilder.integration.aiohttp import CloudAdapter, ConfigurationBotFrameworkAuthentication
 from botframework.connector.auth import AuthenticationConfiguration
 from botbuilder.core import TurnContext
-from config import Config
+from config import Config, BotConfig
 import runpy
 import openai
 import numpy as np
@@ -19,25 +19,9 @@ bot_bp = Blueprint("bot_bp", __name__)
 setup_db = Blueprint("setup_db", __name__)
 health_route = Blueprint("health_route", __name__)
 
-# settings = BotFrameworkAdapterSettings(
-#     app_id=Config.MS_APP_ID,
-#     app_password=Config.MS_APP_PASSWORD,
-# )
-# auth = ConfigurationBotFrameworkAuthentication(settings)
-# adapter = CloudAdapter(auth)
+config = BotConfig()
 
-class BotConfig:
-    MicrosoftAppId       = Config.MS_APP_ID
-    MicrosoftAppPassword = Config.MS_APP_PASSWORD
-    MicrosoftAppType     = "SingleTenant"
-    MicrosoftAppTenantId = Config.AZURE_TENANT_ID
-
-auth_config = AuthenticationConfiguration()
-auth_config.claims_validator = lambda claims: True
-
-auth    = ConfigurationBotFrameworkAuthentication(BotConfig, auth_configuration=auth_config)
-adapter  = CloudAdapter(auth)
-
+adapter = CloudAdapter(ConfigurationBotFrameworkAuthentication(config))
 
 openai_api_key = Config.OPENAI_API_KEY
 
