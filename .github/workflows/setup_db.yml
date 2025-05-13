@@ -1,15 +1,43 @@
-name: Trigger DB Setup
+# name: Trigger DB Setup
+
+# on:
+#   schedule:
+#     - cron: '59 23 1 * *'
+#   workflow_dispatch:
+
+# jobs:
+#   trigger-db-setup:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Send POST request to Flask app
+#         run: |
+#           curl -X POST https://your-app-url/trigger-database-setup \
+#             -H "X-Setup-Secret: ${{ secrets.SETUP_SECRET }}"
+
+
+
+name: Monthly Script Runner
 
 on:
   schedule:
-    - cron: '59 23 1 * *'
-  workflow_dispatch:
+    - cron: '0 0 1 * *'  # Runs on the 1st of every month at midnight UTC
 
 jobs:
-  trigger-db-setup:
+  run-script:
     runs-on: ubuntu-latest
     steps:
-      - name: Send POST request to Flask app
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'  # Or whatever version you use
+
+      - name: Install dependencies
         run: |
-          curl -X POST https://your-app-url/trigger-database-setup \
-            -H "X-Setup-Secret: ${{ secrets.SETUP_SECRET }}"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run monthly Python script
+        run: python setup_databse.py
