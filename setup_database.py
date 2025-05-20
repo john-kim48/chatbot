@@ -104,65 +104,65 @@ def extract_text(pdf_bytes):
     return "".join(pytesseract.image_to_string(page) for page in pages)
 
 
-# def run_pipeline():
-#     pdf_drive = get_drive_id(LIBRARY_PDF)
-#     txt_drive = get_drive_id(LIBRARY_TXT)
+def run_pipeline():
+    pdf_drive = get_drive_id(LIBRARY_PDF)
+    txt_drive = get_drive_id(LIBRARY_TXT)
 
-#     # Scraping setup
-#     base = "https://www.iqaluit.ca"
-#     next_page = "https://www.iqaluit.ca/city-hall/city-council/bylaws2"
-#     pdf_links = set()  # will store tuples of (url, filename)
+    # Scraping setup
+    base = "https://www.iqaluit.ca"
+    next_page = "https://www.iqaluit.ca/city-hall/city-council/bylaws2"
+    pdf_links = set()  # will store tuples of (url, filename)
 
-#     # Collect PDF links along with custom filenames from the /content/ slug
-#     while next_page:
-#         resp = requests.get(next_page, verify=False)
-#         resp.raise_for_status()
-#         soup = BeautifulSoup(resp.text, 'html.parser')
+    # Collect PDF links along with custom filenames from the /content/ slug
+    while next_page:
+        resp = requests.get(next_page, verify=False)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, 'html.parser')
 
-#         for row in soup.select('tr'):
-#             page_link = row.select_one('div.title a[href]')
-#             download_link = row.select_one('div.download a[href$=".pdf"]')
-#             if not page_link or not download_link:
-#                 continue
+        for row in soup.select('tr'):
+            page_link = row.select_one('div.title a[href]')
+            download_link = row.select_one('div.download a[href$=".pdf"]')
+            if not page_link or not download_link:
+                continue
 
-#             # Extract slug after '/content/' from the page URL
-#             slug = page_link['href'].split('/content/')[-1]
-#             filename = f"{slug}.pdf"
+            # Extract slug after '/content/' from the page URL
+            slug = page_link['href'].split('/content/')[-1]
+            filename = f"{slug}.pdf"
 
-#             # Full URL of the PDF
-#             pdf_url = urljoin(base, download_link['href'])
-#             pdf_links.add((pdf_url, filename))
+            # Full URL of the PDF
+            pdf_url = urljoin(base, download_link['href'])
+            pdf_links.add((pdf_url, filename))
 
-#         # Find next page
-#         nxt = soup.select_one("li.next a[href]")
-#         next_page = urljoin(base, nxt['href']) if nxt else None
+        # Find next page
+        nxt = soup.select_one("li.next a[href]")
+        next_page = urljoin(base, nxt['href']) if nxt else None
 
-#     # Process each PDF
-#     for url, filename in pdf_links:
-#         txt_name = filename.rsplit('.', 1)[0] + '.txt'
+    # Process each PDF
+    for url, filename in pdf_links:
+        txt_name = filename.rsplit('.', 1)[0] + '.txt'
 
-#         # Skip if both PDF and TXT already exist
-#         if file_exists(pdf_drive, filename) and file_exists(txt_drive, txt_name):
-#             print(f"Skipping {filename} (already uploaded)")
-#             continue
+        # Skip if both PDF and TXT already exist
+        if file_exists(pdf_drive, filename) and file_exists(txt_drive, txt_name):
+            print(f"Skipping {filename} (already uploaded)")
+            continue
 
-#         # Download PDF
-#         resp = requests.get(url, verify=False)
-#         resp.raise_for_status()
-#         pdf_data = resp.content
+        # Download PDF
+        resp = requests.get(url, verify=False)
+        resp.raise_for_status()
+        pdf_data = resp.content
 
-#         # Upload PDF
-#         upload_bytes(pdf_drive, filename, pdf_data)
+        # Upload PDF
+        upload_bytes(pdf_drive, filename, pdf_data)
 
-#         # Extract and upload text
-#         text = extract_text(pdf_data)
-#         upload_bytes(txt_drive, txt_name, text.encode('utf-8'))
+        # Extract and upload text
+        text = extract_text(pdf_data)
+        upload_bytes(txt_drive, txt_name, text.encode('utf-8'))
 
-#     print("Pipeline completed successfully.")
+    print("Pipeline completed successfully.")
 
 
-# if __name__ == '__main__':
-#     run_pipeline()
+if __name__ == '__main__':
+    run_pipeline()
 
 
 def load_documents_from_sharepoint_txt():
