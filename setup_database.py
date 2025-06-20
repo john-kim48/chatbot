@@ -105,65 +105,65 @@ def extract_text(pdf_bytes):
     return "".join(pytesseract.image_to_string(page) for page in pages)
 
 
-def run_pipeline():
-    pdf_drive = get_drive_id(LIBRARY_PDF)
-    txt_drive = get_drive_id(LIBRARY_TXT)
+# def run_pipeline():
+#     pdf_drive = get_drive_id(LIBRARY_PDF)
+#     txt_drive = get_drive_id(LIBRARY_TXT)
 
-    # Scraping setup
-    base = "https://www.iqaluit.ca"
-    next_page = "https://www.iqaluit.ca/city-hall/city-council/bylaws2"
-    pdf_links = set()  # will store tuples of (url, filename)
+#     # Scraping setup
+#     base = "https://www.iqaluit.ca"
+#     next_page = "https://www.iqaluit.ca/city-hall/city-council/bylaws2"
+#     pdf_links = set()  # will store tuples of (url, filename)
 
-    # Collect PDF links along with custom filenames from the /content/ slug
-    while next_page:
-        resp = requests.get(next_page, verify=False)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, 'html.parser')
+#     # Collect PDF links along with custom filenames from the /content/ slug
+#     while next_page:
+#         resp = requests.get(next_page, verify=False)
+#         resp.raise_for_status()
+#         soup = BeautifulSoup(resp.text, 'html.parser')
 
-        for row in soup.select('tr'):
-            page_link = row.select_one('div.title a[href]')
-            download_link = row.select_one('div.download a[href$=".pdf"]')
-            if not page_link or not download_link:
-                continue
+#         for row in soup.select('tr'):
+#             page_link = row.select_one('div.title a[href]')
+#             download_link = row.select_one('div.download a[href$=".pdf"]')
+#             if not page_link or not download_link:
+#                 continue
 
-            # Extract slug after '/content/' from the page URL
-            slug = page_link['href'].split('/content/')[-1]
-            filename = f"{slug}.pdf"
+#             # Extract slug after '/content/' from the page URL
+#             slug = page_link['href'].split('/content/')[-1]
+#             filename = f"{slug}.pdf"
 
-            # Full URL of the PDF
-            pdf_url = urljoin(base, download_link['href'])
-            pdf_links.add((pdf_url, filename))
+#             # Full URL of the PDF
+#             pdf_url = urljoin(base, download_link['href'])
+#             pdf_links.add((pdf_url, filename))
 
-        # Find next page
-        nxt = soup.select_one("li.next a[href]")
-        next_page = urljoin(base, nxt['href']) if nxt else None
+#         # Find next page
+#         nxt = soup.select_one("li.next a[href]")
+#         next_page = urljoin(base, nxt['href']) if nxt else None
 
-    # Process each PDF
-    for url, filename in pdf_links:
-        txt_name = filename.rsplit('.', 1)[0] + '.txt'
+#     # Process each PDF
+#     for url, filename in pdf_links:
+#         txt_name = filename.rsplit('.', 1)[0] + '.txt'
 
-        # Skip if both PDF and TXT already exist
-        if file_exists(pdf_drive, filename) and file_exists(txt_drive, txt_name):
-            print(f"Skipping {filename} (already uploaded)")
-            continue
+#         # Skip if both PDF and TXT already exist
+#         if file_exists(pdf_drive, filename) and file_exists(txt_drive, txt_name):
+#             print(f"Skipping {filename} (already uploaded)")
+#             continue
 
-        # Download PDF
-        resp = requests.get(url, verify=False)
-        resp.raise_for_status()
-        pdf_data = resp.content
+#         # Download PDF
+#         resp = requests.get(url, verify=False)
+#         resp.raise_for_status()
+#         pdf_data = resp.content
 
-        # Upload PDF
-        upload_bytes(pdf_drive, filename, pdf_data)
+#         # Upload PDF
+#         upload_bytes(pdf_drive, filename, pdf_data)
 
-        # Extract and upload text
-        text = extract_text(pdf_data)
-        upload_bytes(txt_drive, txt_name, text.encode('utf-8'))
+#         # Extract and upload text
+#         text = extract_text(pdf_data)
+#         upload_bytes(txt_drive, txt_name, text.encode('utf-8'))
 
-    print("Pipeline completed successfully.")
+#     print("Pipeline completed successfully.")
 
-
-if __name__ == '__main__':
-    run_pipeline()
+print("Starting pipeline...")
+# if __name__ == '__main__':
+#     run_pipeline()
 
 
 def load_documents_from_sharepoint_txt():
@@ -188,8 +188,8 @@ def load_documents_from_sharepoint_txt():
 
     return documents, document_names
 
-
 documents, document_names = load_documents_from_sharepoint_txt()
+print("finished loading documents")
 
 
 nltk.download('punkt')
@@ -198,33 +198,47 @@ nltk.download('punkt_tab')
 model = "text-embedding-3-large"
 print("downloaded nltk and model")
 
-def get_embeddings(documents, document_names):
+
+def get_embeddings(documents, document_names, batch_size):
     all_keywords = []
     doc_names = []
+    original_doc_names = []
 
     for doc, doc_name in zip(documents, document_names):
-        # Extract keywords from the document
         keywords = document_keywords(doc)
-        if isinstance(keywords, list):
-            keyword_text = ", ".join(keywords)
-        else:
-            keyword_text = keywords
 
-        all_keywords.append(keyword_text)
-        real_doc_names.append(doc_name)
+        # Clean and split the keyword string into a list
+        keyword_list = [k.strip() for k in keywords.split(",") if isinstance(k, str) and k.strip()]
 
-    # Embed all keyword strings at once
-    response = openai.Embedding.create(
-        input=all_keywords,
-        model=model
-    )
+        # Extend the global lists
+        all_keywords.extend(keyword_list)
+        doc_names.extend([f"{doc_name}_{i+1}" for i in range(len((keyword_list)))])
+        original_doc_names.extend([doc_name] * len(keyword_list))
 
-    embeddings = [item.embedding for item in response.data]
+    embeddings = []
+
+    # Batch embedding requests
+    for i in range(0, len(all_keywords), batch_size):
+        batch = all_keywords[i:i + batch_size]
+
+        # Validate input before sending to OpenAI
+        if not all(isinstance(k, str) and k.strip() for k in batch):
+            raise ValueError(f"Invalid input in batch {i}: {batch}")
+
+        response = openai.Embedding.create(
+            input=batch,
+            model=model
+        )
+
+        batch_embeddings = [item.embedding for item in response.data]
+        embeddings.extend(batch_embeddings)
+
     embeddings = np.array(embeddings, dtype=np.float32)
+    print("Embeddings shape:", embeddings.shape)
 
-    return embeddings
+    return embeddings, doc_names, all_keywords, original_doc_names
 
-document_embeddings = get_embeddings(documents, document_names)
+document_embeddings, document_names_numbered, keyword_list, original_doc_names = get_embeddings(documents, document_names, 500)
 
 
 # Store embeddings in FAISS index
@@ -241,11 +255,13 @@ db.init_app(app)
 # Store embeddings in PostgreSQL
 with app.app_context():
     db.create_all()
-    for content, name in zip(documents, document_names):
+    for keyword, name in zip(keyword_list, document_names_numbered):
         existing_doc = Documents.query.get(name)
         document = Documents(
                 document_name=name,
-                document_content=content
+                document_content = documents[document_names.index(name[:name.rfind('_')] if name.split('_')[-1].isdigit() else name)],
+                document_keywords=keyword,
+                original_document_name=original_doc_names[keyword_list.index(keyword)] if keyword in original_doc_names else name
             )
         db.session.add(document)
 
