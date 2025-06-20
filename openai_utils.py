@@ -48,3 +48,33 @@ def filter_keywords(query):
     )
 
     return response["choices"][0]["message"]["content"]
+
+def document_keywords(document):
+    chat_history = [
+        {
+            "role": "system",
+            "content": ("""
+                        You are a legal keyword extraction assistant. Your job is to read municipal bylaw 
+                        documents and return a concise, comma-separated list of important keywords that capture 
+                        the legal concepts, regulatory terms, and practical topics in the document.
+
+                        Focus on:
+                        Legal jargon and official terms used in municipal regulations
+                        Practical subjects (e.g., pets, vehicles, noise, property)
+                        Specific restrictions or permissions
+                        Generalized synonyms or categories that improve searchability (e.g., “animals” for “dogs and cats”, “vehicles” for “cars”)
+
+                        Return only the keywords — do not summarize or explain the content. Format them as a comma-separated list. You may include short phrases, but no full sentences.
+
+                        Your goal is to help optimize the document for semantic search by extracting keywords that are both representative and discoverable.""")
+        }
+    ]
+
+    chat_history.append({"role": "user", "content": document})
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4.1-mini",
+        messages=chat_history
+    )
+
+    return response["choices"][0]["message"]["content"]

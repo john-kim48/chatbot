@@ -12,6 +12,7 @@ import nltk
 from config import Config
 from msal import ConfidentialClientApplication
 import openai
+from openai_utils import document_keywords
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -197,57 +198,33 @@ nltk.download('punkt_tab')
 model = "text-embedding-3-large"
 print("downloaded nltk and model")
 
+def get_embeddings(documents, document_names):
+    all_keywords = []
+    doc_names = []
 
-def chunk_text(text, max_tokens):
-    sentences = nltk.sent_tokenize(text)
-    chunks = []
-    current_chunk = []
-    current_length = 0
-
-    for sentence in sentences:
-        token_count = len(sentence.split())
-        if current_length + token_count > max_tokens:
-            chunks.append(" ".join(current_chunk))
-            current_chunk = [sentence]
-            current_length = token_count
-        else:
-            current_chunk.append(sentence)
-            current_length += token_count
-
-    if current_chunk:
-        chunks.append(" ".join(current_chunk))
-
-    return chunks
-
-
-def get_embeddings(documents, document_names, max_tokens):
-    all_chunks = []
-    chunk_doc_names = []
-    real_doc_names = []
     for doc, doc_name in zip(documents, document_names):
-        chunks = chunk_text(doc, max_tokens)
-        all_chunks.extend(chunks)
-        for i in range(len(chunks)):
-            chunk_doc_names.append(f"{doc_name}_{i}")
-        real_doc_names.extend([doc_name] * len(chunks))
-        
-    # Embed all chunks
-    embeddings = []
-    batch_size = 32
-    for i in range(0, len(all_chunks), batch_size):
-        batch = all_chunks[i:i+batch_size]
-        response = openai.Embedding.create(
-            input=batch,
-            model=model
-        )
-        batch_embeddings = [item.embedding for item in response.data]
-        embeddings.extend(batch_embeddings)
+        # Extract keywords from the document
+        keywords = document_keywords(doc)
+        if isinstance(keywords, list):
+            keyword_text = ", ".join(keywords)
+        else:
+            keyword_text = keywords
 
+        all_keywords.append(keyword_text)
+        real_doc_names.append(doc_name)
+
+    # Embed all keyword strings at once
+    response = openai.Embedding.create(
+        input=all_keywords,
+        model=model
+    )
+
+    embeddings = [item.embedding for item in response.data]
     embeddings = np.array(embeddings, dtype=np.float32)
-    return chunk_doc_names, all_chunks, real_doc_names, embeddings
 
+    return embeddings
 
-chunk_doc_names, all_chunks, real_doc_names, document_embeddings = get_embeddings(documents, document_names, 256)
+document_embeddings = get_embeddings(documents, document_names)
 
 
 # Store embeddings in FAISS index
@@ -264,12 +241,11 @@ db.init_app(app)
 # Store embeddings in PostgreSQL
 with app.app_context():
     db.create_all()
-    for name, content, real_names in zip(chunk_doc_names, all_chunks, real_doc_names):
+    for content, name in zip(documents, document_names):
         existing_doc = Documents.query.get(name)
         document = Documents(
                 document_name=name,
-                document_content=content,
-                original_document_name = real_names
+                document_content=content
             )
         db.session.add(document)
 
